@@ -372,15 +372,23 @@ const Catalogo=({catalogo,filamentos,configs,onAdd,onUpd,onDel,C})=>{
 // ── FILAMENTOS ─────────────────────────────────────────────────────────────
 const Filamentos=({filamentos,onAdd,onUpd,onDel,C})=>{
   const [modal,setModal]=useState(false); const [editando,setEditando]=useState(null); const [loading,setLoading]=useState(false);
-  const empty={marca:"",material:"PLA",cor:"",peso_total:1000,peso_atual:"",peso_carretel:200,valor_pago:""};
+  const [fotoPreview,setFotoPreview]=useState(null); const [fotoFile,setFotoFile]=useState(null);
+  const empty={marca:"",material:"PLA",cor:"",peso_total:1000,peso_atual:"",peso_carretel:200,valor_pago:"",foto_url:""};
   const [form,setForm]=useState(empty);
   const sf=(k,v)=>setForm(f=>({...f,[k]:v}));
   const pesoUtil=parseFloat(form.peso_atual||form.peso_total||0)-parseFloat(form.peso_carretel||0);
-  const abrir=(item=null)=>{setEditando(item);setForm(item?{marca:item.marca||"",material:item.material||"PLA",cor:item.cor||"",peso_total:item.peso_total||1000,peso_atual:item.peso_atual||"",peso_carretel:item.peso_carretel??200,valor_pago:item.valor_pago||""}:empty);setModal(true);};
+  const abrir=(item=null)=>{
+    setEditando(item);
+    setForm(item?{marca:item.marca||"",material:item.material||"PLA",cor:item.cor||"",peso_total:item.peso_total||1000,peso_atual:item.peso_atual||"",peso_carretel:item.peso_carretel??200,valor_pago:item.valor_pago||"",foto_url:item.foto_url||""}:empty);
+    setFotoPreview(item?.foto_url||null); setFotoFile(null); setModal(true);
+  };
+  const handleFoto=(e)=>{const file=e.target.files[0];if(!file)return;setFotoFile(file);const reader=new FileReader();reader.onload=ev=>setFotoPreview(ev.target.result);reader.readAsDataURL(file);};
   const salvar=async()=>{
     if(!form.marca||!form.valor_pago)return alert("Preencha marca e valor.");
     setLoading(true);
-    const payload={...form,peso_total:parseFloat(form.peso_total),peso_atual:parseFloat(form.peso_atual)||parseFloat(form.peso_total),peso_carretel:parseFloat(form.peso_carretel)||0,valor_pago:parseFloat(form.valor_pago)};
+    let foto_url=form.foto_url;
+    if(fotoFile){const ext=fotoFile.name.split(".").pop();const path=`filamentos/${Date.now()}.${ext}`;const {error:upErr}=await supabase.storage.from("fotos").upload(path,fotoFile,{upsert:true});if(!upErr){const {data}=supabase.storage.from("fotos").getPublicUrl(path);foto_url=data.publicUrl;}}
+    const payload={...form,foto_url,peso_total:parseFloat(form.peso_total),peso_atual:parseFloat(form.peso_atual)||parseFloat(form.peso_total),peso_carretel:parseFloat(form.peso_carretel)||0,valor_pago:parseFloat(form.valor_pago)};
     editando?await onUpd(editando.id,payload):await onAdd(payload);
     setModal(false);setLoading(false);
   };
@@ -396,13 +404,29 @@ const Filamentos=({filamentos,onAdd,onUpd,onDel,C})=>{
             const pa=f.peso_atual||f.peso_total;const car=f.peso_carretel||0;const util=pa-car;const pct=Math.max(0,Math.min(100,(util/f.peso_total)*100));const custog=util>0?f.valor_pago/util:0;
             return(
               <Card C={C} key={f.id}>
-                <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
-                  <div><div style={{fontWeight:700,color:C.text,fontSize:15}}>{f.marca}</div><div style={{display:"flex",gap:6,marginTop:4}}><Badge C={C} color={C.blue}>{f.material}</Badge>{f.cor&&<Badge C={C} color={C.muted}>{f.cor}</Badge>}</div></div>
-                  <div style={{display:"flex",gap:6}}>
-                    <button onClick={()=>abrir(f)} style={{background:C.inputBg,border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 8px",cursor:"pointer",color:C.text}}><Icon d={IC.edit} size={14}/></button>
-                    <button onClick={()=>{if(window.confirm("Excluir?"))onDel(f.id);}} style={{background:"rgba(239,68,68,.1)",border:"1px solid rgba(239,68,68,.3)",borderRadius:8,padding:"6px 8px",cursor:"pointer",color:C.red}}><Icon d={IC.trash} size={14}/></button>
+                {f.foto_url?(
+                  <div style={{margin:"-20px -20px 16px",borderRadius:"14px 14px 0 0",overflow:"hidden",height:160,position:"relative"}}>
+                    <img src={f.foto_url} alt={f.cor||f.marca} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                    <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.5) 100%)"}}/>
+                    <div style={{position:"absolute",bottom:10,left:12,display:"flex",gap:6}}>
+                      <Badge C={C} color={C.blue}>{f.material}</Badge>
+                      {f.cor&&<Badge C={C} color="rgba(255,255,255,0.9)">{f.cor}</Badge>}
+                    </div>
+                    <div style={{position:"absolute",top:8,right:8,display:"flex",gap:6}}>
+                      <button onClick={()=>abrir(f)} style={{background:"rgba(0,0,0,.6)",border:"none",borderRadius:8,padding:"6px 8px",cursor:"pointer",color:"#fff"}}><Icon d={IC.edit} size={14}/></button>
+                      <button onClick={()=>{if(window.confirm("Excluir?"))onDel(f.id);}} style={{background:"rgba(239,68,68,.7)",border:"none",borderRadius:8,padding:"6px 8px",cursor:"pointer",color:"#fff"}}><Icon d={IC.trash} size={14}/></button>
+                    </div>
                   </div>
-                </div>
+                ):(
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
+                    <div><div style={{fontWeight:700,color:C.text,fontSize:15}}>{f.marca}</div><div style={{display:"flex",gap:6,marginTop:4}}><Badge C={C} color={C.blue}>{f.material}</Badge>{f.cor&&<Badge C={C} color={C.muted}>{f.cor}</Badge>}</div></div>
+                    <div style={{display:"flex",gap:6}}>
+                      <button onClick={()=>abrir(f)} style={{background:C.inputBg,border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 8px",cursor:"pointer",color:C.text}}><Icon d={IC.edit} size={14}/></button>
+                      <button onClick={()=>{if(window.confirm("Excluir?"))onDel(f.id);}} style={{background:"rgba(239,68,68,.1)",border:"1px solid rgba(239,68,68,.3)",borderRadius:8,padding:"6px 8px",cursor:"pointer",color:C.red}}><Icon d={IC.trash} size={14}/></button>
+                    </div>
+                  </div>
+                )}
+                {f.foto_url&&<div style={{fontWeight:700,color:C.text,fontSize:15,marginBottom:12}}>{f.marca}</div>}
                 <div style={{marginBottom:14}}>
                   <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:C.muted,marginBottom:6}}><span>Útil: <strong style={{color:util>100?C.green:util>0?C.yellow:C.red}}>{util.toFixed(0)}g</strong></span><span>{pct.toFixed(0)}%</span></div>
                   <div style={{height:8,background:C.inputBg,borderRadius:4}}><div style={{height:"100%",width:`${pct}%`,background:pct>50?C.green:pct>20?C.yellow:C.red,borderRadius:4}}/></div>
@@ -416,13 +440,28 @@ const Filamentos=({filamentos,onAdd,onUpd,onDel,C})=>{
         </div>
       )}
       {modal&&(
-        <Modal C={C} title={editando?"Editar Filamento":"Novo Filamento"} onClose={()=>setModal(false)}>
-          <div style={{display:"grid",gap:14}}>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-              <Inp C={C} label="Marca" value={form.marca} onChange={v=>sf("marca",v)} placeholder="Ex: Esun..."/>
-              <Sel C={C} label="Material" value={form.material} onChange={v=>sf("material",v)} options={MATERIAIS.map(m=>({value:m,label:m}))}/>
+        <Modal C={C} title={editando?"Editar Filamento":"Novo Filamento"} onClose={()=>setModal(false)} wide>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:16}}>
+            <div>
+              <label style={{fontSize:12,fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:".06em",display:"block",marginBottom:8}}>Foto do Filamento</label>
+              <label style={{display:"block",cursor:"pointer"}}>
+                <input type="file" accept="image/*" capture="environment" onChange={handleFoto} style={{display:"none"}}/>
+                {fotoPreview?<img src={fotoPreview} alt="preview" style={{width:"100%",height:180,objectFit:"cover",borderRadius:12,border:`2px solid ${C.accent}`}}/>
+                  :<div style={{width:"100%",height:180,background:C.inputBg,border:`2px dashed ${C.border}`,borderRadius:12,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8,color:C.muted}}>
+                    <Icon d={IC.camera} size={28} color={C.muted}/>
+                    <span style={{fontSize:13}}>Foto do rolo</span>
+                    <span style={{fontSize:11,color:C.dim}}>Toque para selecionar</span>
+                  </div>}
+              </label>
+              {fotoPreview&&<button onClick={()=>{setFotoPreview(null);setFotoFile(null);sf("foto_url","");}} style={{marginTop:8,background:"none",border:"none",color:C.red,fontSize:12,cursor:"pointer"}}>Remover foto</button>}
             </div>
-            <Inp C={C} label="Cor" value={form.cor} onChange={v=>sf("cor",v)} placeholder="Ex: Branco..."/>
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              <Inp C={C} label="Marca" value={form.marca} onChange={v=>sf("marca",v)} placeholder="Ex: Esun, Bambu..."/>
+              <Sel C={C} label="Material" value={form.material} onChange={v=>sf("material",v)} options={MATERIAIS.map(m=>({value:m,label:m}))}/>
+              <Inp C={C} label="Cor" value={form.cor} onChange={v=>sf("cor",v)} placeholder="Ex: Branco, Silk Rosa..."/>
+            </div>
+          </div>
+          <div style={{display:"grid",gap:14}}>
             <div style={{padding:14,background:C.inputBg,borderRadius:10}}>
               <div style={{fontSize:12,fontWeight:700,color:C.accent,marginBottom:12}}>⚖️ Pesos</div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
