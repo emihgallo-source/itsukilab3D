@@ -258,6 +258,18 @@ const Dashboard=({filamentos,pedidos,clientes,catalogo,C,setPage,setPedidoDetalh
 
 
 // ── CATÁLOGO ───────────────────────────────────────────────────────────────
+const calcularCusto=(filamentos,configs,consumo_g,filamento_id)=>{
+  const fil=filamentos.find(x=>x.id===filamento_id);
+  if(!fil||!consumo_g) return 0;
+  const pesoUtil=(fil.peso_atual||fil.peso_total)-(fil.peso_carretel||0);
+  const custog=pesoUtil>0?fil.valor_pago/pesoUtil:0;
+  const custoFil=(parseFloat(consumo_g)||0)*custog;
+  const horasEst=(parseFloat(consumo_g)||0)/50;
+  const custoEnergia=horasEst*0.2*(configs?.energia_kwh||0.85);
+  const custoMao=horasEst*(configs?.custo_hora||15);
+  return custoFil+custoEnergia+custoMao;
+};
+
 const Catalogo=({catalogo,filamentos,configs,onAdd,onUpd,onDel,C})=>{
   const [modal,setModal]=useState(false); const [editando,setEditando]=useState(null);
   const [busca,setBusca]=useState(""); const [fotoPreview,setFotoPreview]=useState(null);
@@ -284,6 +296,20 @@ const Catalogo=({catalogo,filamentos,configs,onAdd,onUpd,onDel,C})=>{
     editando?await onUpd(editando.id,payload):await onAdd(payload);
     setModal(false);setLoading(false);
   };
+
+  // Recalcula custos automaticamente quando configs ou filamentos mudam
+  const recalcularTodosCustos=async()=>{
+    if(!catalogo.length||!filamentos.length) return;
+    for(const item of catalogo){
+      if(item.filamento_id&&item.consumo_g){
+        const novoCusto=calcularCusto(filamentos,configs,item.consumo_g,item.filamento_id);
+        if(Math.abs(novoCusto-(item.custo_producao||0))>0.01){
+          await onUpd(item.id,{custo_producao:novoCusto});
+        }
+      }
+    }
+  };
+  useEffect(()=>{recalcularTodosCustos();},[configs,filamentos]);
   const filtrados=catalogo.filter(p=>p.nome?.toLowerCase().includes(busca.toLowerCase()));
   return(
     <div>
@@ -552,6 +578,33 @@ const Orcamento=({filamentos,configs,onSaveConfigs,C})=>{
 
 
 // ── PEDIDOS ────────────────────────────────────────────────────────────────
+const enviarNotificacaoWhatsApp=async(pedido,carrinho,total)=>{
+  const WHATSAPP_ADMIN="5516997824029";
+  const itensTexto=JSON.parse(pedido.itens||"[]").map(i=>`• ${i.nome} x${i.quantidade} = R$ ${Number(i.subtotal).toFixed(2)}`).join("%0A");
+  const msg=encodeURIComponent(
+    `🛍️ *NOVO PEDIDO #${pedido.numero} - Itsuki Lab*
+
+` +
+    `👤 Cliente: ${pedido.cliente_nome}
+` +
+    `📱 WhatsApp: ${pedido.cliente_whatsapp||"—"}
+` +
+    `📧 Email: ${pedido.cliente_email||"—"}
+
+` +
+    `📦 Itens:
+${JSON.parse(pedido.itens||"[]").map(i=>`• ${i.nome} x${i.quantidade} = R$ ${Number(i.subtotal).toFixed(2)}`).join("
+")}
+
+` +
+    `💰 *Total: R$ ${Number(pedido.total).toFixed(2)}*
+
+` +
+    `📅 Data: ${pedido.data}`
+  );
+  window.open(`https://wa.me/${WHATSAPP_ADMIN}?text=${msg}`,"_blank");
+};
+
 const NotaPedido=({pedido,cliente,itens,onClose,C})=>(
   <Modal C={C} title={`Nota do Pedido #${pedido.numero}`} onClose={onClose} wide>
     <div style={{textAlign:"center",marginBottom:20,paddingBottom:16,borderBottom:`2px solid ${C.border}`}}>
@@ -970,6 +1023,31 @@ export default function App(){
   const saveCfg=async(d)=>{const {data:r}=await supabase.from("configs").upsert({...d,user_id:user.id},{onConflict:"user_id"}).select().single();if(r)setConfigs(r);};
 
   const irParaPedido=(p)=>{setPedidoDetalhe(p);setPage("pedidos");};
+
+  // Notificação de novos pedidos da loja pública
+  const [ultimoPedidoNotif,setUltimoPedidoNotif]=useState(null);
+  const [novoPedidoAlert,setNovoPedidoAlert]=useState(null);
+
+  useEffect(()=>{
+    if(!user) return;
+    const channel=supabase.channel("pedidos-loja")
+      .on("postgres_changes",{event:"INSERT",schema:"public",table:"pedidos"},(payload)=>{
+        const p=payload.new;
+        if(p.origem==="loja_publica"){
+          setNovoPedidoAlert(p);
+          setPedidos(prev=>[p,...prev]);
+          // Notificação do navegador
+          if("Notification" in window&&Notification.permission==="granted"){
+            new Notification("🛍️ Novo pedido na loja!",{body:`${p.cliente_nome} · R$ ${Number(p.total).toFixed(2)}`});
+          }
+        }
+      }).subscribe();
+    // Pedir permissão para notificações
+    if("Notification" in window&&Notification.permission==="default"){
+      Notification.requestPermission();
+    }
+    return ()=>supabase.removeChannel(channel);
+  },[user]);
   const irParaCliente=(c)=>{setClienteDetalhe(c);setPage("clientes");};
 
   if(appLoading)return <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",color:C.muted,fontFamily:"sans-serif"}}>Carregando...</div>;
@@ -990,7 +1068,36 @@ export default function App(){
     <div style={{fontFamily:"'DM Sans','Segoe UI',sans-serif",background:C.bg,color:C.text,minHeight:"100vh",display:"flex",transition:"background .2s"}}>
       <style>{`* { box-sizing: border-box; margin: 0; padding: 0; } input, select, textarea { color-scheme: ${darkMode?"dark":"light"}; } ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: ${C.surface}; } ::-webkit-scrollbar-thumb { background: ${C.border}; border-radius: 3px; } @media print { aside { display: none !important; } main { margin-left: 0 !important; } }`}</style>
       <Sidebar C={C} active={page} setActive={setPage} user={user} onLogout={logout} darkMode={darkMode} setDarkMode={setDarkMode}/>
-      <main style={{flex:1,marginLeft:220,padding:"32px 36px",maxWidth:"100%",overflowX:"hidden"}}>{pages[page]}</main>
+      <main style={{flex:1,marginLeft:220,padding:"32px 36px",maxWidth:"100%",overflowX:"hidden"}}>
+        {novoPedidoAlert&&(
+          <div style={{position:"fixed",top:20,right:20,zIndex:999,background:C.green,color:"#fff",borderRadius:14,padding:"16px 20px",boxShadow:"0 8px 32px rgba(22,163,74,0.4)",maxWidth:360,cursor:"pointer"}}
+            onClick={()=>{setPage("pedidos");setNovoPedidoAlert(null);}}>
+            <div style={{fontWeight:800,fontSize:16,marginBottom:4}}>🛍️ Novo pedido da loja!</div>
+            <div style={{fontSize:13,opacity:0.9}}>
+              {novoPedidoAlert.cliente_nome} · {brl(novoPedidoAlert.total)}<br/>
+              {novoPedidoAlert.cliente_whatsapp&&`WhatsApp: ${novoPedidoAlert.cliente_whatsapp}`}
+            </div>
+            <div style={{display:"flex",gap:8,marginTop:12}}>
+              <button onClick={e=>{e.stopPropagation();
+                const msg=encodeURIComponent(`🛍️ *NOVO PEDIDO #${novoPedidoAlert.numero}*
+
+Cliente: ${novoPedidoAlert.cliente_nome}
+WhatsApp: ${novoPedidoAlert.cliente_whatsapp||"—"}
+Total: R$ ${Number(novoPedidoAlert.total).toFixed(2)}
+Data: ${novoPedidoAlert.data}`);
+                window.open(`https://wa.me/5516997824029?text=${msg}`,"_blank");
+              }} style={{flex:1,background:"rgba(255,255,255,0.2)",border:"none",borderRadius:8,padding:"8px",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:600,fontSize:13}}>
+                📱 Ver no WhatsApp
+              </button>
+              <button onClick={e=>{e.stopPropagation();setNovoPedidoAlert(null);}}
+                style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:8,padding:"8px 12px",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:600,fontSize:13}}>
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+        {pages[page]}
+      </main>
     </div>
   );
 }
