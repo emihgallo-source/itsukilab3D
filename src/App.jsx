@@ -309,7 +309,8 @@ const Catalogo=({catalogo,filamentos,configs,onAdd,onUpd,onDel,C})=>{
       }
     }
   };
-  useEffect(()=>{recalcularTodosCustos();},[configs,filamentos]);
+  useEffect(()=>{recalcularTodosCustos();},// eslint-disable-next-line
+  [JSON.stringify(configs),JSON.stringify(filamentos)]);
   const filtrados=catalogo.filter(p=>p.nome?.toLowerCase().includes(busca.toLowerCase()));
   return(
     <div>
@@ -578,33 +579,6 @@ const Orcamento=({filamentos,configs,onSaveConfigs,C})=>{
 
 
 // ── PEDIDOS ────────────────────────────────────────────────────────────────
-const enviarNotificacaoWhatsApp=async(pedido,carrinho,total)=>{
-  const WHATSAPP_ADMIN="5516997824029";
-  const itensTexto=JSON.parse(pedido.itens||"[]").map(i=>`• ${i.nome} x${i.quantidade} = R$ ${Number(i.subtotal).toFixed(2)}`).join("%0A");
-  const msg=encodeURIComponent(
-    `🛍️ *NOVO PEDIDO #${pedido.numero} - Itsuki Lab*
-
-` +
-    `👤 Cliente: ${pedido.cliente_nome}
-` +
-    `📱 WhatsApp: ${pedido.cliente_whatsapp||"—"}
-` +
-    `📧 Email: ${pedido.cliente_email||"—"}
-
-` +
-    `📦 Itens:
-${JSON.parse(pedido.itens||"[]").map(i=>`• ${i.nome} x${i.quantidade} = R$ ${Number(i.subtotal).toFixed(2)}`).join("
-")}
-
-` +
-    `💰 *Total: R$ ${Number(pedido.total).toFixed(2)}*
-
-` +
-    `📅 Data: ${pedido.data}`
-  );
-  window.open(`https://wa.me/${WHATSAPP_ADMIN}?text=${msg}`,"_blank");
-};
-
 const NotaPedido=({pedido,cliente,itens,onClose,C})=>(
   <Modal C={C} title={`Nota do Pedido #${pedido.numero}`} onClose={onClose} wide>
     <div style={{textAlign:"center",marginBottom:20,paddingBottom:16,borderBottom:`2px solid ${C.border}`}}>
@@ -1075,17 +1049,13 @@ export default function App(){
             <div style={{fontWeight:800,fontSize:16,marginBottom:4}}>🛍️ Novo pedido da loja!</div>
             <div style={{fontSize:13,opacity:0.9}}>
               {novoPedidoAlert.cliente_nome} · {brl(novoPedidoAlert.total)}<br/>
-              {novoPedidoAlert.cliente_whatsapp&&`WhatsApp: ${novoPedidoAlert.cliente_whatsapp}`}
+              {novoPedidoAlert.cliente_whatsapp&&"WhatsApp: " + novoPedidoAlert.cliente_whatsapp}
             </div>
             <div style={{display:"flex",gap:8,marginTop:12}}>
               <button onClick={e=>{e.stopPropagation();
-                const msg=encodeURIComponent(`🛍️ *NOVO PEDIDO #${novoPedidoAlert.numero}*
-
-Cliente: ${novoPedidoAlert.cliente_nome}
-WhatsApp: ${novoPedidoAlert.cliente_whatsapp||"—"}
-Total: R$ ${Number(novoPedidoAlert.total).toFixed(2)}
-Data: ${novoPedidoAlert.data}`);
-                window.open(`https://wa.me/5516997824029?text=${msg}`,"_blank");
+                const n=novoPedidoAlert;
+                const msg=encodeURIComponent("🛍️ *NOVO PEDIDO #"+n.numero+"*%0A%0ACliente: "+n.cliente_nome+"%0AWhatsApp: "+(n.cliente_whatsapp||"—")+"%0ATotal: R$ "+Number(n.total).toFixed(2)+"%0AData: "+n.data);
+                window.open("https://wa.me/5516997824029?text="+msg,"_blank");
               }} style={{flex:1,background:"rgba(255,255,255,0.2)",border:"none",borderRadius:8,padding:"8px",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:600,fontSize:13}}>
                 📱 Ver no WhatsApp
               </button>
