@@ -253,11 +253,11 @@ const Catalogo=({catalogo,filamentos,insumos,configs,onAdd,onUpd,onDel,C})=>{
   const sf=(k,v)=>setForm(f=>({...f,[k]:v}));
 
   const calcCusto=()=>{
-    const ch=configs?.custo_hora||15; const kwh=configs?.energia_kwh||0.85;
+    const ch=configs?.custo_hora||15; const kwh=configs?.energia_kwh||0.85; const kw=configs?.consumo_kw||0.2;
     let cf=0,cg_total=0;
     for(const fu of filUsados){const fil=filamentos.find(x=>x.id===fu.filamento_id);if(fil){const u=(fil.peso_atual||fil.peso_total)-(fil.peso_carretel||0);const cg=u>0?fil.valor_pago/u:0;cf+=cg*(parseFloat(fu.consumo_g)||0);cg_total+=parseFloat(fu.consumo_g)||0;}}
     const hrs=cg_total/50;
-    const ce=hrs*0.2*kwh; const cm=hrs*ch;
+    const ce=hrs*kw*kwh; const cm=hrs*ch;
     let ci=0;
     for(const iu of insUsados){const ins=insumos.find(x=>x.id===iu.insumo_id);if(ins){const u=ins.qtd_total>0?ins.valor_pago/ins.qtd_total:0;ci+=u*(parseFloat(iu.quantidade)||0);}}
     return {cf,ce,cm,ci,total:cf+ce+cm+ci};
@@ -603,10 +603,10 @@ const Orcamento=({filamentos,insumos,configs,onSaveConfigs,onAddCatalogo,C,setPa
   const [modalCatalogo,setModalCatalogo]=useState(false);
   const [emEstoque,setEmEstoque]=useState(false); const [qtdEstoque,setQtdEstoque]=useState(1);
   const [precoVenda,setPrecoVenda]=useState("");
-  const [cfgForm,setCfgForm]=useState({custo_hora:configs?.custo_hora||15,energia_kwh:configs?.energia_kwh||0.85,margem_lucro:configs?.margem_lucro||50,marketplace:configs?.marketplace||0,cartao:configs?.cartao||0,nf:configs?.nf||0});
+  const [cfgForm,setCfgForm]=useState({custo_hora:configs?.custo_hora||15,energia_kwh:configs?.energia_kwh||0.85,consumo_kw:configs?.consumo_kw||0.2,margem_lucro:configs?.margem_lucro||50,marketplace:configs?.marketplace||0,cartao:configs?.cartao||0,nf:configs?.nf||0});
   const [savingCfg,setSavingCfg]=useState(false);
 
-  useEffect(()=>{if(configs)setCfgForm({custo_hora:configs.custo_hora||15,energia_kwh:configs.energia_kwh||0.85,margem_lucro:configs.margem_lucro||50,marketplace:configs.marketplace||0,cartao:configs.cartao||0,nf:configs.nf||0});},[configs]);
+  useEffect(()=>{if(configs)setCfgForm({custo_hora:configs.custo_hora||15,energia_kwh:configs.energia_kwh||0.85,consumo_kw:configs.consumo_kw||0.2,margem_lucro:configs.margem_lucro||50,marketplace:configs.marketplace||0,cartao:configs.cartao||0,nf:configs.nf||0});},[configs]);
 
   const saveCfg=async()=>{setSavingCfg(true);await onSaveConfigs(cfgForm);setSavingCfg(false);alert("Configurações salvas!");};
 
@@ -615,7 +615,7 @@ const Orcamento=({filamentos,insumos,configs,onSaveConfigs,onAddCatalogo,C,setPa
     let cf=0,cg_total=0;
     for(const fu of filUsados){const fil=filamentos.find(f=>f.id===fu.filamento_id);if(fil){const u=(fil.peso_atual||fil.peso_total)-(fil.peso_carretel||0);const cg=u>0?fil.valor_pago/u:0;cf+=cg*(parseFloat(fu.consumo_g)||0);cg_total+=parseFloat(fu.consumo_g)||0;}}
     const mins=(parseFloat(tempH)||0)*60+(parseFloat(tempM)||0);
-    const hrs=mins/60; const cm_print=hrs*ch; const ce=hrs*0.2*kwh; const cm_mao=(parseFloat(tempoMao)||0)/60*ch;
+    const kw=cfgForm.consumo_kw||0.2; const hrs=mins/60; const cm_print=hrs*ch; const ce=hrs*kw*kwh; const cm_mao=(parseFloat(tempoMao)||0)/60*ch;
     let ci=0;
     for(const iu of insUsados){const ins=insumos.find(x=>x.id===iu.insumo_id);if(ins){const u=ins.qtd_total>0?ins.valor_pago/ins.qtd_total:0;ci+=u*(parseFloat(iu.quantidade)||0);}}
     const cp=cf+cm_print+ce+cm_mao;
@@ -672,6 +672,7 @@ const Orcamento=({filamentos,insumos,configs,onSaveConfigs,onAddCatalogo,C,setPa
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
             <Inp C={C} label="Custo por hora" value={cfgForm.custo_hora} onChange={v=>setCfgForm(f=>({...f,custo_hora:parseFloat(v)||0}))} type="number" prefix="R$" suffix="/h"/>
             <Inp C={C} label="Energia elétrica" value={cfgForm.energia_kwh} onChange={v=>setCfgForm(f=>({...f,energia_kwh:parseFloat(v)||0}))} type="number" prefix="R$" suffix="/kWh"/>
+            <Inp C={C} label="Consumo da impressora" value={cfgForm.consumo_kw} onChange={v=>setCfgForm(f=>({...f,consumo_kw:parseFloat(v)||0}))} type="number" suffix="kW" help="Ex: 0.15 Bambu A1 Mini · 0.25 Creality · 0.40 ambas juntas"/>
           </div>
         </Card>
         <Card C={C}>
