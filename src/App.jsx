@@ -1013,7 +1013,7 @@ const Configs=({user,C})=>{
 
 // ── MAIN APP ───────────────────────────────────────────────────────────────
 export default function App(){
-  const [darkMode,setDarkMode]=useState(true);
+  const [darkMode,setDarkMode]=useState(false);
   const [user,setUser]=useState(null); const [appLoading,setAppLoading]=useState(true);
   const [isRecovery,setIsRecovery]=useState(false);
   const [page,setPage]=useState("dashboard");
