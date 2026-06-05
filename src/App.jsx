@@ -194,7 +194,6 @@ const Sidebar=({active,setActive,user,onLogout,darkMode,setDarkMode,C,badge})=>(
   </aside>
 );
 
-
 // ── DASHBOARD ──────────────────────────────────────────────────────────────
 const Dashboard=({filamentos,pedidos,clientes,catalogo,C,setPage})=>{
   const ativos=pedidos.filter(p=>p.status!=="entregue"&&p.status!=="cancelado").length;
@@ -241,7 +240,6 @@ const Dashboard=({filamentos,pedidos,clientes,catalogo,C,setPage})=>{
     </div>
   </div>);
 };
-
 
 // ── CATÁLOGO ───────────────────────────────────────────────────────────────
 const Catalogo=({catalogo,filamentos,insumos,configs,onAdd,onUpd,onDel,C})=>{
@@ -433,529 +431,6 @@ const Catalogo=({catalogo,filamentos,insumos,configs,onAdd,onUpd,onDel,C})=>{
   </div>);
 };
 
-
-// ── FILAMENTOS ─────────────────────────────────────────────────────────────
-const Filamentos=({filamentos,onAdd,onUpd,onDel,C})=>{
-  const [modal,setModal]=useState(false);const [editando,setEditando]=useState(null);const [loading,setLoading]=useState(false);
-  const [fotoPreview,setFotoPreview]=useState(null);const [fotoFile,setFotoFile]=useState(null);
-  const empty={marca:"",material:"PLA",cor:"",peso_total:1000,peso_atual:"",peso_carretel:200,valor_pago:"",foto_url:""};
-  const [form,setForm]=useState(empty);const sf=(k,v)=>setForm(f=>({...f,[k]:v}));
-  const pesoUtil=parseFloat(form.peso_atual||form.peso_total||0)-parseFloat(form.peso_carretel||0);
-  const abrir=(item=null)=>{setEditando(item);setForm(item?{marca:item.marca||"",material:item.material||"PLA",cor:item.cor||"",peso_total:item.peso_total||1000,peso_atual:item.peso_atual||"",peso_carretel:item.peso_carretel??200,valor_pago:item.valor_pago||"",foto_url:item.foto_url||""}:empty);setFotoPreview(item?.foto_url||null);setFotoFile(null);setModal(true);};
-  const handleFoto=(e)=>{const file=e.target.files[0];if(!file)return;setFotoFile(file);const r=new FileReader();r.onload=ev=>setFotoPreview(ev.target.result);r.readAsDataURL(file);};
-  const salvar=async()=>{
-    if(!form.marca||!form.valor_pago)return alert("Preencha marca e valor.");
-    setLoading(true);
-    let foto_url=form.foto_url;
-    if(fotoFile){const ext=fotoFile.name.split(".").pop();const path=`filamentos/${Date.now()}.${ext}`;const {error:upErr}=await supabase.storage.from("fotos").upload(path,fotoFile,{upsert:true});if(!upErr){const {data}=supabase.storage.from("fotos").getPublicUrl(path);foto_url=data.publicUrl;}}
-    const payload={...form,foto_url,peso_total:parseFloat(form.peso_total),peso_atual:parseFloat(form.peso_atual)||parseFloat(form.peso_total),peso_carretel:parseFloat(form.peso_carretel)||0,valor_pago:parseFloat(form.valor_pago)};
-    editando?await onUpd(editando.id,payload):await onAdd(payload);
-    setModal(false);setLoading(false);
-  };
-  return(<div>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
-      <div><h1 style={{fontSize:24,fontWeight:800,color:C.text,margin:0}}>Filamentos</h1></div>
-      <Btn C={C} onClick={()=>abrir()} icon="plus">Novo Filamento</Btn>
-    </div>
-    {filamentos.length===0?<Card C={C} style={{textAlign:"center",padding:60}}><p style={{color:C.dim}}>Nenhum filamento</p></Card>:(
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16}}>
-        {filamentos.map(f=>{
-          const pa=f.peso_atual||f.peso_total;const car=f.peso_carretel||0;const util=pa-car;const pct=Math.max(0,Math.min(100,(util/f.peso_total)*100));const custog=util>0?f.valor_pago/util:0;
-          return(<Card C={C} key={f.id}>
-            {f.foto_url&&(<div style={{margin:"-20px -20px 16px",borderRadius:"14px 14px 0 0",overflow:"hidden",height:150,position:"relative"}}>
-              <img src={f.foto_url} alt={f.cor||f.marca} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-              <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom,transparent 40%,rgba(0,0,0,0.5) 100%)"}}/>
-              <div style={{position:"absolute",bottom:8,left:10,display:"flex",gap:6}}><Badge C={C} color={C.blue}>{f.material}</Badge>{f.cor&&<Badge C={C} color="rgba(255,255,255,0.9)">{f.cor}</Badge>}</div>
-              <div style={{position:"absolute",top:6,right:6,display:"flex",gap:4}}>
-                <button onClick={()=>abrir(f)} style={{background:"rgba(0,0,0,.6)",border:"none",borderRadius:6,padding:"4px 7px",cursor:"pointer",color:"#fff"}}><Icon d={IC.edit} size={13}/></button>
-                <button onClick={()=>{if(window.confirm("Excluir?"))onDel(f.id);}} style={{background:"rgba(239,68,68,.7)",border:"none",borderRadius:6,padding:"4px 7px",cursor:"pointer",color:"#fff"}}><Icon d={IC.trash} size={13}/></button>
-              </div>
-            </div>)}
-            {!f.foto_url&&(<div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
-              <div><div style={{fontWeight:700,color:C.text}}>{f.marca}</div><div style={{display:"flex",gap:4,marginTop:4}}><Badge C={C} color={C.blue}>{f.material}</Badge>{f.cor&&<Badge C={C} color={C.muted}>{f.cor}</Badge>}</div></div>
-              <div style={{display:"flex",gap:4}}>
-                <button onClick={()=>abrir(f)} style={{background:C.inputBg,border:`1px solid ${C.border}`,borderRadius:7,padding:"5px 7px",cursor:"pointer",color:C.text}}><Icon d={IC.edit} size={13}/></button>
-                <button onClick={()=>{if(window.confirm("Excluir?"))onDel(f.id);}} style={{background:"rgba(239,68,68,.1)",border:"1px solid rgba(239,68,68,.3)",borderRadius:7,padding:"5px 7px",cursor:"pointer",color:C.red}}><Icon d={IC.trash} size={13}/></button>
-              </div>
-            </div>)}
-            {f.foto_url&&<div style={{fontWeight:700,color:C.text,marginBottom:10}}>{f.marca}</div>}
-            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:C.muted,marginBottom:6}}><span>Útil: <strong style={{color:util>100?C.green:util>0?C.yellow:C.red}}>{util.toFixed(0)}g</strong></span><span>{pct.toFixed(0)}%</span></div>
-            <div style={{height:7,background:C.inputBg,borderRadius:4,marginBottom:12}}><div style={{height:"100%",width:`${pct}%`,background:pct>50?C.green:pct>20?C.yellow:C.red,borderRadius:4}}/></div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,fontSize:11}}>
-              {[["Total",f.peso_total+"g"],["Carretel",car+"g"],["R$/g",brl(custog)]].map(([l,v])=>(<div key={l} style={{background:C.inputBg,borderRadius:7,padding:7}}><div style={{color:C.muted}}>{l}</div><div style={{fontWeight:700,color:C.text}}>{v}</div></div>))}
-            </div>
-          </Card>);
-        })}
-      </div>
-    )}
-    {modal&&(<Modal C={C} title={editando?"Editar Filamento":"Novo Filamento"} onClose={()=>setModal(false)} wide>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:16}}>
-        <div>
-          <label style={{fontSize:12,fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:".06em",display:"block",marginBottom:8}}>Foto</label>
-          <label style={{display:"block",cursor:"pointer"}}>
-            <input type="file" accept="image/*" capture="environment" onChange={handleFoto} style={{display:"none"}}/>
-            {fotoPreview?<img src={fotoPreview} style={{width:"100%",height:170,objectFit:"cover",borderRadius:12,border:`2px solid ${C.accent}`}}/>:<div style={{height:170,background:C.inputBg,border:`2px dashed ${C.border}`,borderRadius:12,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6,color:C.muted}}><Icon d={IC.camera} size={26} color={C.muted}/><span style={{fontSize:12}}>Foto do rolo</span></div>}
-          </label>
-          {fotoPreview&&<button onClick={()=>{setFotoPreview(null);setFotoFile(null);sf("foto_url","");}} style={{marginTop:6,background:"none",border:"none",color:C.red,fontSize:12,cursor:"pointer"}}>Remover</button>}
-        </div>
-        <div style={{display:"flex",flexDirection:"column",gap:11}}>
-          <Inp C={C} label="Marca" value={form.marca} onChange={v=>sf("marca",v)} placeholder="Ex: Esun, Bambu..."/>
-          <Sel C={C} label="Material" value={form.material} onChange={v=>sf("material",v)} options={MATERIAIS.map(m=>({value:m,label:m}))}/>
-          <Inp C={C} label="Cor" value={form.cor} onChange={v=>sf("cor",v)} placeholder="Ex: Silk Rosa..."/>
-        </div>
-      </div>
-      <div style={{padding:13,background:C.inputBg,borderRadius:10,marginBottom:13}}>
-        <div style={{fontSize:12,fontWeight:700,color:C.accent,marginBottom:11}}>⚖️ Pesos</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:11}}>
-          <Inp C={C} label="Peso total (novo)" value={form.peso_total} onChange={v=>sf("peso_total",v)} type="number" suffix="g"/>
-          <Inp C={C} label="Peso atual" value={form.peso_atual} onChange={v=>sf("peso_atual",v)} type="number" suffix="g" help="Pese agora"/>
-          <Inp C={C} label="Carretel vazio" value={form.peso_carretel} onChange={v=>sf("peso_carretel",v)} type="number" suffix="g"/>
-        </div>
-        <div style={{marginTop:9,padding:9,background:C.card,borderRadius:7,fontSize:13}}><span style={{color:C.muted}}>Útil: </span><strong style={{color:pesoUtil>0?C.green:C.red}}>{pesoUtil.toFixed(0)}g</strong></div>
-      </div>
-      <Inp C={C} label="Valor pago pelo rolo" value={form.valor_pago} onChange={v=>sf("valor_pago",v)} type="number" prefix="R$"/>
-      <div style={{display:"flex",gap:10,marginTop:15}}><Btn C={C} onClick={salvar} loading={loading} full>{editando?"Salvar":"Adicionar"}</Btn><Btn C={C} onClick={()=>setModal(false)} variant="ghost" full>Cancelar</Btn></div>
-    </Modal>)}
-  </div>);
-};
-
-// ── INSUMOS ────────────────────────────────────────────────────────────────
-const Insumos=({insumos,onAdd,onUpd,onDel,C})=>{
-  const [modal,setModal]=useState(false);const [editando,setEditando]=useState(null);const [loading,setLoading]=useState(false);
-  const [fotoPreview,setFotoPreview]=useState(null);const [fotoFile,setFotoFile]=useState(null);
-  const empty={nome:"",descricao:"",valor_pago:"",qtd_total:"",foto_url:""};
-  const [form,setForm]=useState(empty);const sf=(k,v)=>setForm(f=>({...f,[k]:v}));
-  const abrir=(item=null)=>{setEditando(item);setForm(item?{nome:item.nome||"",descricao:item.descricao||"",valor_pago:item.valor_pago||"",qtd_total:item.qtd_total||"",foto_url:item.foto_url||""}:empty);setFotoPreview(item?.foto_url||null);setFotoFile(null);setModal(true);};
-  const handleFoto=(e)=>{const file=e.target.files[0];if(!file)return;setFotoFile(file);const r=new FileReader();r.onload=ev=>setFotoPreview(ev.target.result);r.readAsDataURL(file);};
-  const salvar=async()=>{
-    if(!form.nome||!form.valor_pago||!form.qtd_total)return alert("Preencha nome, valor e quantidade.");
-    setLoading(true);
-    let foto_url=form.foto_url;
-    if(fotoFile){const ext=fotoFile.name.split(".").pop();const path=`insumos/${Date.now()}.${ext}`;const {error:upErr}=await supabase.storage.from("fotos").upload(path,fotoFile,{upsert:true});if(!upErr){const {data}=supabase.storage.from("fotos").getPublicUrl(path);foto_url=data.publicUrl;}}
-    const payload={...form,foto_url,valor_pago:parseFloat(form.valor_pago)||0,qtd_total:parseFloat(form.qtd_total)||0};
-    editando?await onUpd(editando.id,payload):await onAdd(payload);
-    setModal(false);setLoading(false);
-  };
-  return(<div>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
-      <div><h1 style={{fontSize:24,fontWeight:800,color:C.text,margin:0}}>Insumos</h1><p style={{color:C.muted,fontSize:14,margin:"4px 0 0"}}>Argolas, correntes, imãs e outros itens adicionais</p></div>
-      <Btn C={C} onClick={()=>abrir()} icon="plus">Novo Insumo</Btn>
-    </div>
-    {insumos.length===0?<Card C={C} style={{textAlign:"center",padding:60}}><div style={{fontSize:40,marginBottom:12}}>✨</div><p style={{color:C.dim}}>Cadastre argolas, correntes, imãs...</p><div style={{marginTop:16}}><Btn C={C} onClick={()=>abrir()} icon="plus" size="sm">Adicionar</Btn></div></Card>:(
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:14}}>
-        {insumos.map(ins=>{const unit=ins.qtd_total>0?ins.valor_pago/ins.qtd_total:0;
-          return(<Card C={C} key={ins.id}>
-            {ins.foto_url&&<img src={ins.foto_url} alt={ins.nome} style={{width:"100%",height:130,objectFit:"cover",borderRadius:10,marginBottom:12}}/>}
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
-              <div><div style={{fontWeight:700,color:C.text,fontSize:14}}>{ins.nome}</div>{ins.descricao&&<div style={{fontSize:11,color:C.muted,marginTop:2}}>{ins.descricao}</div>}</div>
-              <div style={{display:"flex",gap:4}}>
-                <button onClick={()=>abrir(ins)} style={{background:C.inputBg,border:`1px solid ${C.border}`,borderRadius:7,padding:"5px 7px",cursor:"pointer",color:C.text}}><Icon d={IC.edit} size={13}/></button>
-                <button onClick={()=>{if(window.confirm("Excluir?"))onDel(ins.id);}} style={{background:"rgba(239,68,68,.1)",border:"1px solid rgba(239,68,68,.3)",borderRadius:7,padding:"5px 7px",cursor:"pointer",color:C.red}}><Icon d={IC.trash} size={13}/></button>
-              </div>
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,fontSize:11}}>
-              {[["Valor pago",brl(ins.valor_pago)],["Qtd total",ins.qtd_total+" un"],["Custo/un",brl(unit)]].map(([l,v])=>(<div key={l} style={{background:C.inputBg,borderRadius:7,padding:7}}><div style={{color:C.muted}}>{l}</div><div style={{fontWeight:700,color:C.text}}>{v}</div></div>))}
-            </div>
-          </Card>);
-        })}
-      </div>
-    )}
-    {modal&&(<Modal C={C} title={editando?"Editar Insumo":"Novo Insumo"} onClose={()=>setModal(false)} wide>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
-        <div>
-          <label style={{fontSize:12,fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:".06em",display:"block",marginBottom:8}}>Foto</label>
-          <label style={{display:"block",cursor:"pointer"}}>
-            <input type="file" accept="image/*" capture="environment" onChange={handleFoto} style={{display:"none"}}/>
-            {fotoPreview?<img src={fotoPreview} style={{width:"100%",height:170,objectFit:"cover",borderRadius:12,border:`2px solid ${C.accent}`}}/>:<div style={{height:170,background:C.inputBg,border:`2px dashed ${C.border}`,borderRadius:12,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6,color:C.muted}}><Icon d={IC.camera} size={26} color={C.muted}/><span style={{fontSize:12}}>Foto do item</span></div>}
-          </label>
-          {fotoPreview&&<button onClick={()=>{setFotoPreview(null);setFotoFile(null);sf("foto_url","");}} style={{marginTop:6,background:"none",border:"none",color:C.red,fontSize:12,cursor:"pointer"}}>Remover</button>}
-        </div>
-        <div style={{display:"flex",flexDirection:"column",gap:11}}>
-          <Inp C={C} label="Nome" value={form.nome} onChange={v=>sf("nome",v)} placeholder="Ex: Argola de chaveiro"/>
-          <Inp C={C} label="Descrição" value={form.descricao} onChange={v=>sf("descricao",v)} placeholder="Tamanho, cor..."/>
-          <Inp C={C} label="Valor pago (pacote)" value={form.valor_pago} onChange={v=>sf("valor_pago",v)} type="number" prefix="R$"/>
-          <Inp C={C} label="Quantidade no pacote" value={form.qtd_total} onChange={v=>sf("qtd_total",v)} type="number" suffix="un"/>
-          {form.valor_pago&&form.qtd_total&&(<div style={{padding:9,background:C.accentSoft,borderRadius:8,fontSize:13}}><span style={{color:C.muted}}>Custo unitário: </span><strong style={{color:C.accent}}>{brl(parseFloat(form.valor_pago)/parseFloat(form.qtd_total))}</strong></div>)}
-        </div>
-      </div>
-      <div style={{display:"flex",gap:10,marginTop:16}}><Btn C={C} onClick={salvar} loading={loading} full>{editando?"Salvar":"Adicionar"}</Btn><Btn C={C} onClick={()=>setModal(false)} variant="ghost" full>Cancelar</Btn></div>
-    </Modal>)}
-  </div>);
-};
-
-
-// ── PRECIFICAÇÃO ── com automação → catálogo ───────────────────────────────
-const Orcamento=({filamentos,insumos,configs,onSaveConfigs,onAddCatalogo,C})=>{
-  const [nome,setNome]=useState("");
-  const [filUsados,setFilUsados]=useState([{filamento_id:"",consumo_g:""}]);
-  const [insUsados,setInsUsados]=useState([]);
-  const [tempH,setTempH]=useState(0);const [tempM,setTempM]=useState(0);
-  const [tempoMao,setTempoMao]=useState(0);const [retrabalho,setRetrabalho]=useState(0);
-  const [urgencia,setUrgencia]=useState(0);const [margem,setMargem]=useState(configs?.margem_lucro||50);
-  const [resultado,setResultado]=useState(null);
-  const [cfgForm,setCfgForm]=useState({custo_hora:configs?.custo_hora||15,energia_kwh:configs?.energia_kwh||0.85,margem_lucro:configs?.margem_lucro||50,marketplace:configs?.marketplace||0,cartao:configs?.cartao||0,nf:configs?.nf||0});
-  const [savingCfg,setSavingCfg]=useState(false);
-  const [salvarModal,setSalvarModal]=useState(false);
-  const [catForm,setCatForm]=useState({preco_venda:"",descricao:"",em_estoque:false,qtd_estoque:0});
-  const [savingCat,setSavingCat]=useState(false);
-
-  useEffect(()=>{if(configs)setCfgForm({custo_hora:configs.custo_hora||15,energia_kwh:configs.energia_kwh||0.85,margem_lucro:configs.margem_lucro||50,marketplace:configs.marketplace||0,cartao:configs.cartao||0,nf:configs.nf||0});},[configs]);
-
-  const saveCfg=async()=>{setSavingCfg(true);await onSaveConfigs(cfgForm);setSavingCfg(false);alert("Configurações salvas!");};
-
-  const calcular=()=>{
-    const ch=cfgForm.custo_hora||15;const kwh=cfgForm.energia_kwh||0.85;
-    let custoFil=0;let consumoTotal=0;
-    for(const fu of filUsados){const fil=filamentos.find(f=>f.id===fu.filamento_id);if(fil){const util=(fil.peso_atual||fil.peso_total)-(fil.peso_carretel||0);const cg=util>0?fil.valor_pago/util:0;custoFil+=cg*(parseFloat(fu.consumo_g)||0);consumoTotal+=parseFloat(fu.consumo_g)||0;}}
-    const mins=(parseFloat(tempH)||0)*60+(parseFloat(tempM)||0);const hrs=mins/60;
-    const custoPrint=hrs*ch;const custoEnergia=hrs*0.2*kwh;const custoMao=(parseFloat(tempoMao)||0)/60*ch;
-    let custoInsumos=0;
-    for(const iu of insUsados){const ins=insumos.find(x=>x.id===iu.insumo_id);if(ins){const u=ins.qtd_total>0?ins.valor_pago/ins.qtd_total:0;custoInsumos+=u*(parseFloat(iu.quantidade)||0);}}
-    const custoProducao=custoFil+custoPrint+custoEnergia+custoMao;
-    const custoRetrab=custoProducao*((parseFloat(retrabalho)||0)/100);
-    const custoTotal=custoProducao+custoRetrab+custoInsumos;
-    const base=custoTotal*(1+(parseFloat(urgencia)||0)/100+(cfgForm.marketplace||0)/100+(cfgForm.cartao||0)/100+(cfgForm.nf||0)/100);
-    const mg=parseFloat(margem)||0;const preco=mg<100?base/(1-mg/100):base*2;
-    const r={custoFil,custoPrint,custoEnergia,custoMao,custoInsumos,custoTotal,preco,lucro:preco-base};
-    setResultado(r);
-    setCatForm(f=>({...f,preco_venda:preco.toFixed(2)}));
-    return r;
-  };
-
-  const recalcular=()=>{if(resultado)calcular();};
-
-  const salvarNoCatalogo=async()=>{
-    if(!nome)return alert("Preencha o nome do produto.");
-    setSavingCat(true);
-    const r=resultado||calcular();
-    await onAddCatalogo({
-      nome,descricao:catForm.descricao,em_estoque:catForm.em_estoque,qtd_estoque:parseInt(catForm.qtd_estoque)||0,
-      preco_venda:parseFloat(catForm.preco_venda)||0,custo_producao:r.custoTotal,
-      fotos_urls:"[]",foto_url:"",
-      filamentos_usados:JSON.stringify(filUsados),insumos_usados:JSON.stringify(insUsados),
-      consumo_g:filUsados.reduce((s,f)=>s+(parseFloat(f.consumo_g)||0),0)
-    });
-    setSalvarModal(false);
-    alert("✅ Produto salvo no catálogo!");
-  };
-
-  return(<div>
-    <h1 style={{fontSize:24,fontWeight:800,color:C.text,marginBottom:6}}>Precificação</h1>
-    <p style={{color:C.muted,marginBottom:24,fontSize:14}}>Calcule e salve direto no catálogo</p>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 360px",gap:20}}>
-      <div style={{display:"flex",flexDirection:"column",gap:14}}>
-        <Card C={C}><h3 style={{margin:"0 0 14px",fontSize:14,fontWeight:700,color:C.accent}}>📦 Dados do Produto</h3>
-          <Inp C={C} label="Nome do produto" value={nome} onChange={setNome} placeholder="Ex: Chaveiro personalizado..."/>
-        </Card>
-        <Card C={C}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><h3 style={{margin:0,fontSize:14,fontWeight:700,color:C.accent}}>⚙️ Custos Operacionais (fixos)</h3><Btn C={C} onClick={saveCfg} loading={savingCfg} size="sm" icon="check">Salvar</Btn></div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-            <Inp C={C} label="Custo por hora" value={cfgForm.custo_hora} onChange={v=>setCfgForm(f=>({...f,custo_hora:parseFloat(v)||0}))} type="number" prefix="R$" suffix="/h"/>
-            <Inp C={C} label="Energia elétrica" value={cfgForm.energia_kwh} onChange={v=>setCfgForm(f=>({...f,energia_kwh:parseFloat(v)||0}))} type="number" prefix="R$" suffix="/kWh"/>
-          </div>
-        </Card>
-        <Card C={C}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><h3 style={{margin:0,fontSize:14,fontWeight:700,color:C.accent}}>📊 Margens e Taxas</h3><Btn C={C} onClick={saveCfg} loading={savingCfg} size="sm" icon="check">Salvar</Btn></div>
-          <div style={{display:"grid",gap:12}}>
-            <Inp C={C} label="Margem de lucro padrão" value={cfgForm.margem_lucro} onChange={v=>setCfgForm(f=>({...f,margem_lucro:parseFloat(v)||0}))} type="number" suffix="%"/>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
-              <Inp C={C} label="Marketplace %" value={cfgForm.marketplace} onChange={v=>setCfgForm(f=>({...f,marketplace:parseFloat(v)||0}))} type="number" suffix="%"/>
-              <Inp C={C} label="Cartão %" value={cfgForm.cartao} onChange={v=>setCfgForm(f=>({...f,cartao:parseFloat(v)||0}))} type="number" suffix="%"/>
-              <Inp C={C} label="Nota Fiscal %" value={cfgForm.nf} onChange={v=>setCfgForm(f=>({...f,nf:parseFloat(v)||0}))} type="number" suffix="%"/>
-            </div>
-          </div>
-        </Card>
-        <Card C={C}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-            <h3 style={{margin:0,fontSize:14,fontWeight:700,color:C.accent}}>🧵 Filamentos Usados</h3>
-            <button onClick={()=>setFilUsados(f=>[...f,{filamento_id:"",consumo_g:""}])} style={{background:C.accent,color:"#fff",border:"none",borderRadius:8,padding:"4px 12px",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600}}>+ Filamento</button>
-          </div>
-          {filUsados.map((fu,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 110px 32px",gap:8,marginBottom:8,alignItems:"end"}}>
-            <Sel C={C} label={i===0?"Filamento":""} value={fu.filamento_id} onChange={v=>{const a=[...filUsados];a[i]={...a[i],filamento_id:v};setFilUsados(a);}} options={[{value:"",label:"— Selecionar —"},...filamentos.map(f=>({value:f.id,label:`${f.marca} ${f.material}${f.cor?" ("+f.cor+")":""}`}))]}/>
-            <Inp C={C} label={i===0?"g usados":""} value={fu.consumo_g} onChange={v=>{const a=[...filUsados];a[i]={...a[i],consumo_g:v};setFilUsados(a);}} type="number" suffix="g"/>
-            {filUsados.length>1&&<button onClick={()=>setFilUsados(f=>f.filter((_,j)=>j!==i))} style={{background:"rgba(239,68,68,.1)",border:"1px solid rgba(239,68,68,.3)",borderRadius:8,height:38,cursor:"pointer",color:C.red,fontSize:16}}>✕</button>}
-          </div>))}
-        </Card>
-        {insumos.length>0&&(<Card C={C}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-            <h3 style={{margin:0,fontSize:14,fontWeight:700,color:C.accent}}>✨ Insumos Adicionais</h3>
-            <button onClick={()=>setInsUsados(f=>[...f,{insumo_id:"",quantidade:""}])} style={{background:C.accent,color:"#fff",border:"none",borderRadius:8,padding:"4px 12px",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600}}>+ Insumo</button>
-          </div>
-          {insUsados.map((iu,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 110px 32px",gap:8,marginBottom:8,alignItems:"end"}}>
-            <Sel C={C} label={i===0?"Insumo":""} value={iu.insumo_id} onChange={v=>{const a=[...insUsados];a[i]={...a[i],insumo_id:v};setInsUsados(a);}} options={[{value:"",label:"— Selecionar —"},...insumos.map(ins=>({value:ins.id,label:`${ins.nome} (${brl(ins.qtd_total>0?ins.valor_pago/ins.qtd_total:0)}/un)`}))]}/>
-            <Inp C={C} label={i===0?"Qtd":""} value={iu.quantidade} onChange={v=>{const a=[...insUsados];a[i]={...a[i],quantidade:v};setInsUsados(a);}} type="number" suffix="un"/>
-            <button onClick={()=>setInsUsados(f=>f.filter((_,j)=>j!==i))} style={{background:"rgba(239,68,68,.1)",border:"1px solid rgba(239,68,68,.3)",borderRadius:8,height:38,cursor:"pointer",color:C.red,fontSize:16}}>✕</button>
-          </div>))}
-        </Card>)}
-        <Card C={C}><h3 style={{margin:"0 0 14px",fontSize:14,fontWeight:700,color:C.accent}}>⏱ Tempo e Mão de Obra</h3>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-            <Inp C={C} label="Horas impressão" value={tempH} onChange={setTempH} type="number" suffix="h"/>
-            <Inp C={C} label="Minutos" value={tempM} onChange={setTempM} type="number" suffix="min"/>
-            <Inp C={C} label="Pós-impressão" value={tempoMao} onChange={setTempoMao} type="number" suffix="min"/>
-          </div>
-        </Card>
-        <Card C={C}><h3 style={{margin:"0 0 14px",fontSize:14,fontWeight:700,color:C.accent}}>💡 Custos Extras</h3>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-            <Inp C={C} label="Retrabalho" value={retrabalho} onChange={setRetrabalho} type="number" suffix="%"/>
-            <Inp C={C} label="Urgência" value={urgencia} onChange={setUrgencia} type="number" suffix="%"/>
-          </div>
-        </Card>
-        <Btn C={C} onClick={calcular} icon="zap" full size="lg">Calcular Custo de Fabricação</Btn>
-      </div>
-
-      <div>
-        <Card C={C} style={{position:"sticky",top:20}}>
-          <h3 style={{margin:"0 0 16px",fontSize:15,fontWeight:700,color:C.text}}>📊 Resultado</h3>
-          {resultado?(<>
-            {[["Filamento",resultado.custoFil],["Máquina",resultado.custoPrint],["Energia",resultado.custoEnergia],["Mão de obra",resultado.custoMao],["Insumos",resultado.custoInsumos]].map(([l,v])=>(<div key={l} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:`1px solid ${C.border}`,fontSize:13}}><span style={{color:C.muted}}>{l}</span><span style={{color:C.text}}>{brl(v)}</span></div>))}
-            <div style={{display:"flex",justifyContent:"space-between",padding:"10px 0",fontSize:15,fontWeight:700,borderBottom:`1px solid ${C.border}`}}><span style={{color:C.text}}>Custo total</span><span style={{color:C.accent}}>{brl(resultado.custoTotal)}</span></div>
-            <div style={{margin:"14px 0 10px"}}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><span style={{fontSize:13,color:C.muted,fontWeight:600}}>Margem de lucro</span><Badge C={C} color={C.green}>{margem}%</Badge></div>
-              <input type="range" min={0} max={200} value={margem} onChange={e=>setMargem(+e.target.value)} onMouseUp={recalcular} onTouchEnd={recalcular} style={{width:"100%",accentColor:C.accent}}/>
-            </div>
-            <div style={{background:C.accentSoft,border:`1px solid ${C.accentGlow}`,borderRadius:12,padding:16,textAlign:"center",marginTop:12}}>
-              <div style={{fontSize:11,color:C.accent,fontWeight:600,marginBottom:4}}>PREÇO SUGERIDO</div>
-              <div style={{fontSize:30,fontWeight:900,color:C.accent}}>{brl(resultado.preco)}</div>
-              <div style={{fontSize:12,color:C.green,marginTop:4}}>Lucro: {brl(resultado.lucro)}</div>
-            </div>
-            <div style={{marginTop:16,display:"flex",flexDirection:"column",gap:8}}>
-              <Btn C={C} onClick={()=>setSalvarModal(true)} icon="box" full variant="success">💾 Salvar no Catálogo</Btn>
-            </div>
-          </>):(<div style={{textAlign:"center",padding:40,color:C.dim}}><Icon d={IC.tag} size={40} color={C.dim}/><p style={{marginTop:12,fontSize:13}}>Preencha e clique em "Calcular"</p></div>)}
-        </Card>
-      </div>
-    </div>
-
-    {salvarModal&&resultado&&(<Modal C={C} title="Salvar no Catálogo" onClose={()=>setSalvarModal(false)}>
-      <div style={{display:"flex",flexDirection:"column",gap:14}}>
-        <div style={{background:C.accentSoft,border:`1px solid ${C.accentGlow}`,borderRadius:10,padding:14,fontSize:13}}>
-          <div style={{fontWeight:700,color:C.accent,marginBottom:6}}>📦 {nome||"(sem nome)"}</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-            <div style={{color:C.muted}}>Custo: <strong style={{color:C.text}}>{brl(resultado.custoTotal)}</strong></div>
-            <div style={{color:C.muted}}>Margem: <strong style={{color:C.green}}>{margem}%</strong></div>
-          </div>
-        </div>
-        <Inp C={C} label="Preço de venda" value={catForm.preco_venda} onChange={v=>setCatForm(f=>({...f,preco_venda:v}))} type="number" prefix="R$" help="Edite se quiser ajustar o preço sugerido"/>
-        <Inp C={C} label="Descrição (medidas, detalhes)" value={catForm.descricao} onChange={v=>setCatForm(f=>({...f,descricao:v}))} placeholder="Ex: 10x5cm, PLA Rosa..."/>
-        <div style={{display:"flex",alignItems:"center",gap:10}}><input type="checkbox" id="em_est" checked={catForm.em_estoque} onChange={e=>setCatForm(f=>({...f,em_estoque:e.target.checked}))} style={{accentColor:C.accent,width:16,height:16}}/><label htmlFor="em_est" style={{color:C.text,fontSize:14,cursor:"pointer",fontWeight:600}}>Produto em estoque?</label></div>
-        {catForm.em_estoque&&<Inp C={C} label="Quantidade em estoque" value={catForm.qtd_estoque} onChange={v=>setCatForm(f=>({...f,qtd_estoque:v}))} type="number" suffix="un"/>}
-        <div style={{padding:10,background:"rgba(34,197,94,0.08)",borderRadius:8,fontSize:12,color:C.green}}>
-          Lucro: {brl(parseFloat(catForm.preco_venda||0)-resultado.custoTotal)} · Margem real: {catForm.preco_venda>0?((parseFloat(catForm.preco_venda)-resultado.custoTotal)/parseFloat(catForm.preco_venda)*100).toFixed(1):0}%
-        </div>
-        <div style={{fontSize:11,color:C.muted}}>💡 Você poderá adicionar fotos depois, editando o produto no Catálogo.</div>
-        <div style={{display:"flex",gap:10}}>
-          <Btn C={C} onClick={salvarNoCatalogo} loading={savingCat} full icon="check">Salvar no Catálogo</Btn>
-          <Btn C={C} onClick={()=>setSalvarModal(false)} variant="ghost" full>Cancelar</Btn>
-        </div>
-      </div>
-    </Modal>)}
-  </div>);
-};
-
-
-// ── PEDIDOS ────────────────────────────────────────────────────────────────
-const Pedidos=({pedidos,clientes,catalogo,onAdd,onUpd,onDel,onUpdEstoque,C,pedidoDetalheInicial,onClearDetalhe})=>{
-  const [modal,setModal]=useState(false);const [pedidoVer,setPedidoVer]=useState(pedidoDetalheInicial||null);const [notaModal,setNotaModal]=useState(null);
-  const [busca,setBusca]=useState("");const [carrinho,setCarrinho]=useState([]);const [clienteId,setClienteId]=useState("");const [formPag,setFormPag]=useState("pix");const [obs,setObs]=useState("");const [loading,setLoading]=useState(false);const [prodSel,setProdSel]=useState("");const [qtdSel,setQtdSel]=useState(1);
-  useEffect(()=>{if(pedidoDetalheInicial){setPedidoVer(pedidoDetalheInicial);onClearDetalhe&&onClearDetalhe();}},[pedidoDetalheInicial]);
-  const proximoNumero=(pedidos.length>0?Math.max(...pedidos.map(p=>p.numero||0)):0)+1;
-  const totalCarrinho=carrinho.reduce((s,i)=>s+i.subtotal,0);
-  const addCarrinho=()=>{const prod=catalogo.find(p=>p.id===prodSel);if(!prod)return;const qtd=parseInt(qtdSel)||1;setCarrinho(c=>{const ex=c.find(x=>x.produto_id===prodSel);if(ex)return c.map(x=>x.produto_id===prodSel?{...x,quantidade:x.quantidade+qtd,subtotal:(x.quantidade+qtd)*x.preco_unit}:x);return[...c,{produto_id:prodSel,nome:prod.nome,quantidade:qtd,preco_unit:prod.preco_venda,subtotal:qtd*prod.preco_venda}];});setProdSel("");setQtdSel(1);};
-  const remItem=(pid)=>setCarrinho(c=>c.filter(x=>x.produto_id!==pid));
-  const updQtd=(pid,q)=>setCarrinho(c=>c.map(x=>x.produto_id===pid?{...x,quantidade:parseInt(q)||1,subtotal:(parseInt(q)||1)*x.preco_unit}:x));
-  const criarPedido=async()=>{if(carrinho.length===0)return alert("Adicione pelo menos um produto.");setLoading(true);const cliente=clientes.find(c=>c.id===clienteId);const pedido={numero:proximoNumero,cliente_id:clienteId||null,cliente_nome:cliente?.nome||"—",total:totalCarrinho,forma_pagamento:formPag,obs,status:"pendente",data:nowDate(),itens:JSON.stringify(carrinho)};await onAdd(pedido);for(const item of carrinho){const prod=catalogo.find(p=>p.id===item.produto_id);if(prod&&prod.em_estoque){await onUpdEstoque(item.produto_id,Math.max(0,(prod.qtd_estoque||0)-item.quantidade));}}setModal(false);setCarrinho([]);setClienteId("");setObs("");setLoading(false);};
-  const excluirPedido=async(p)=>{if(!window.confirm("Excluir pedido? Estoque será restaurado."))return;const itens=JSON.parse(p.itens||"[]");for(const item of itens){const prod=catalogo.find(x=>x.id===item.produto_id);if(prod&&prod.em_estoque){await onUpdEstoque(item.produto_id,(prod.qtd_estoque||0)+item.quantidade);}}await onDel(p.id);};
-  const filtrados=pedidos.filter(p=>String(p.numero||"").includes(busca)||(p.cliente_nome||"").toLowerCase().includes(busca.toLowerCase()));
-  return(<div>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
-      <div><h1 style={{fontSize:24,fontWeight:800,color:C.text,margin:0}}>Pedidos</h1></div>
-      <Btn C={C} onClick={()=>setModal(true)} icon="plus">Novo Pedido</Btn>
-    </div>
-    <div style={{marginBottom:16}}><Inp C={C} value={busca} onChange={setBusca} placeholder="🔍  Buscar..."/></div>
-    {filtrados.length===0?<Card C={C} style={{textAlign:"center",padding:60}}><p style={{color:C.dim}}>Nenhum pedido</p></Card>:(
-      <Card C={C} style={{padding:0,overflow:"hidden"}}>
-        <table style={{width:"100%",borderCollapse:"collapse"}}>
-          <thead><tr style={{background:C.inputBg}}>{["Nº","Cliente","Data","Total","Pagamento","Status",""].map(h=>(<th key={h} style={{padding:"12px 16px",textAlign:"left",fontSize:11,fontWeight:700,color:C.muted,textTransform:"uppercase"}}>{h}</th>))}</tr></thead>
-          <tbody>{filtrados.map((p,i)=>{const sc=STATUS_COLORS[p.status]||C.accent;return(<tr key={p.id} style={{borderTop:`1px solid ${C.border}`,cursor:"pointer"}} onClick={()=>setPedidoVer(p)} onMouseEnter={e=>e.currentTarget.style.background=C.inputBg} onMouseLeave={e=>e.currentTarget.style.background=""}>
-            <td style={{padding:"14px 16px",color:C.accent,fontWeight:800}}>#{p.numero}</td>
-            <td style={{padding:"14px 16px",color:C.text,fontWeight:600}}>{p.cliente_nome||"—"}</td>
-            <td style={{padding:"14px 16px",color:C.muted,fontSize:13}}>{p.data}</td>
-            <td style={{padding:"14px 16px",color:C.accent,fontWeight:700}}>{brl(p.total)}</td>
-            <td style={{padding:"14px 16px",color:C.muted,fontSize:13}}>{p.forma_pagamento||"—"}</td>
-            <td style={{padding:"14px 16px"}} onClick={e=>e.stopPropagation()}><select value={p.status} onChange={e=>onUpd(p.id,{status:e.target.value})} style={{background:sc+"22",color:sc,border:`1px solid ${sc}44`,borderRadius:6,padding:"4px 8px",fontSize:12,fontWeight:700,fontFamily:"inherit",cursor:"pointer"}}>{STATUS.map(s=><option key={s} value={s}>{s}</option>)}</select></td>
-            <td style={{padding:"14px 16px"}} onClick={e=>e.stopPropagation()}><div style={{display:"flex",gap:6}}><button onClick={()=>setNotaModal(p)} style={{background:C.accentSoft,border:"none",borderRadius:6,padding:"5px 8px",cursor:"pointer",color:C.accent}}><Icon d={IC.download} size={14}/></button><button onClick={()=>excluirPedido(p)} style={{background:"none",border:"none",color:C.dim,cursor:"pointer"}}><Icon d={IC.trash} size={15}/></button></div></td>
-          </tr>);})}
-          </tbody>
-        </table>
-      </Card>
-    )}
-    {pedidoVer&&(()=>{const itens=JSON.parse(pedidoVer.itens||"[]");const cliente=clientes.find(c=>c.id===pedidoVer.cliente_id);return(<Modal C={C} title={"Pedido #"+pedidoVer.numero} onClose={()=>setPedidoVer(null)} wide>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:18}}>
-        <div style={{background:C.inputBg,borderRadius:12,padding:14}}><div style={{fontSize:20,fontWeight:900,color:C.accent,marginBottom:8}}>#{pedidoVer.numero}</div><div style={{fontSize:13,color:C.text}}><span style={{color:C.muted}}>Data: </span>{pedidoVer.data}</div><div style={{fontSize:13,color:C.text}}><span style={{color:C.muted}}>Pagamento: </span>{pedidoVer.forma_pagamento||"—"}</div><div style={{marginTop:8}}><Badge C={C} color={STATUS_COLORS[pedidoVer.status]||C.yellow}>{pedidoVer.status}</Badge></div></div>
-        <div style={{background:C.inputBg,borderRadius:12,padding:14}}><div style={{fontSize:15,fontWeight:700,color:C.text}}>{cliente?.nome||pedidoVer.cliente_nome||"—"}</div>{pedidoVer.cliente_whatsapp&&<div style={{fontSize:13,color:C.muted,marginTop:4}}>📱 {pedidoVer.cliente_whatsapp}</div>}{pedidoVer.cliente_email&&<div style={{fontSize:13,color:C.muted}}>📧 {pedidoVer.cliente_email}</div>}</div>
-      </div>
-      <table style={{width:"100%",borderCollapse:"collapse",marginBottom:14}}><thead><tr style={{background:C.inputBg}}>{["Produto","Qtd","Preço","Subtotal"].map(h=>(<th key={h} style={{padding:"8px 12px",textAlign:"left",fontSize:11,fontWeight:700,color:C.muted,borderBottom:`1px solid ${C.border}`}}>{h}</th>))}</tr></thead><tbody>{itens.map((item,i)=>(<tr key={i} style={{borderBottom:`1px solid ${C.border}`}}><td style={{padding:"10px 12px",color:C.text,fontWeight:600}}>{item.nome}</td><td style={{padding:"10px 12px",color:C.text}}>{item.quantidade}</td><td style={{padding:"10px 12px",color:C.text}}>{brl(item.preco_unit)}</td><td style={{padding:"10px 12px",color:C.accent,fontWeight:700}}>{brl(item.subtotal)}</td></tr>))}</tbody></table>
-      <div style={{display:"flex",justifyContent:"space-between",padding:14,background:C.accentSoft,borderRadius:12}}><span style={{fontWeight:700,color:C.text}}>Total</span><span style={{fontWeight:900,color:C.accent,fontSize:20}}>{brl(pedidoVer.total)}</span></div>
-      {pedidoVer.obs&&<div style={{marginTop:10,padding:10,background:C.inputBg,borderRadius:8,fontSize:13,color:C.muted}}>📝 {pedidoVer.obs}</div>}
-      <div style={{display:"flex",gap:10,marginTop:18}}><Btn C={C} onClick={()=>{setNotaModal(pedidoVer);setPedidoVer(null);}} icon="download" full>Gerar Nota</Btn><Btn C={C} onClick={()=>setPedidoVer(null)} variant="ghost" full>Fechar</Btn></div>
-    </Modal>);})()}
-    {notaModal&&(()=>{const itens=JSON.parse(notaModal.itens||"[]");return(<Modal C={C} title={"Nota #"+notaModal.numero} onClose={()=>setNotaModal(null)} wide>
-      <div style={{textAlign:"center",marginBottom:18}}><img src={LOGO} style={{width:56,height:56,objectFit:"contain"}}/><h2 style={{color:C.text,margin:"8px 0 2px"}}>Itsuki Lab</h2></div>
-      <table style={{width:"100%",borderCollapse:"collapse",marginBottom:14}}><thead><tr style={{background:C.inputBg}}>{["Produto","Qtd","Preço","Subtotal"].map(h=>(<th key={h} style={{padding:"8px 12px",textAlign:"left",fontSize:11,fontWeight:700,color:C.muted,borderBottom:`1px solid ${C.border}`}}>{h}</th>))}</tr></thead><tbody>{itens.map((item,i)=>(<tr key={i} style={{borderBottom:`1px solid ${C.border}`}}><td style={{padding:"10px 12px",color:C.text}}>{item.nome}</td><td style={{padding:"10px 12px",color:C.text}}>{item.quantidade}</td><td style={{padding:"10px 12px",color:C.text}}>{brl(item.preco_unit)}</td><td style={{padding:"10px 12px",color:C.accent,fontWeight:700}}>{brl(item.subtotal)}</td></tr>))}</tbody></table>
-      <div style={{display:"flex",justifyContent:"flex-end"}}><div style={{background:C.accentSoft,border:`1px solid ${C.accentGlow}`,borderRadius:12,padding:"12px 20px",textAlign:"right"}}><div style={{fontSize:12,color:C.muted}}>Total</div><div style={{fontSize:26,fontWeight:900,color:C.accent}}>{brl(notaModal.total)}</div></div></div>
-      <div style={{display:"flex",gap:10,marginTop:18}}><Btn C={C} onClick={()=>window.print()} icon="download" full>Imprimir / PDF</Btn><Btn C={C} onClick={()=>setNotaModal(null)} variant="ghost" full>Fechar</Btn></div>
-    </Modal>);})()}
-    {modal&&(<Modal C={C} title={"Novo Pedido #"+proximoNumero} onClose={()=>setModal(false)} wider>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
-        <div style={{display:"flex",flexDirection:"column",gap:14}}>
-          <div style={{background:C.accentSoft,border:`1px solid ${C.accentGlow}`,borderRadius:10,padding:"10px 14px",fontSize:20,fontWeight:900,color:C.accent}}>#{proximoNumero}</div>
-          <Sel C={C} label="Cliente" value={clienteId} onChange={setClienteId} options={[{value:"",label:"— Sem cliente —"},...clientes.map(c=>({value:c.id,label:c.nome}))]}/>
-          <Sel C={C} label="Forma de Pagamento" value={formPag} onChange={setFormPag} options={PAGAMENTO.map(p=>({value:p,label:p.charAt(0).toUpperCase()+p.slice(1)}))}/>
-          <Inp C={C} label="Observações" value={obs} onChange={setObs} placeholder="..."/>
-        </div>
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          <div style={{fontSize:13,fontWeight:700,color:C.accent}}>🛒 Itens</div>
-          <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
-            <div style={{flex:1}}><Sel C={C} label="Produto" value={prodSel} onChange={setProdSel} options={[{value:"",label:"— Selecionar —"},...catalogo.filter(p=>p.em_estoque&&(p.qtd_estoque||0)>0).map(p=>({value:p.id,label:p.nome+" ("+p.qtd_estoque+" un)"}))]}/></div>
-            <div style={{width:68}}><Inp C={C} label="Qtd" value={qtdSel} onChange={setQtdSel} type="number"/></div>
-            <Btn C={C} onClick={addCarrinho} icon="plus" disabled={!prodSel}>Add</Btn>
-          </div>
-          {carrinho.length===0?<div style={{textAlign:"center",padding:20,color:C.dim,background:C.inputBg,borderRadius:10,fontSize:13}}>Nenhum item</div>:(
-            <div style={{display:"flex",flexDirection:"column",gap:7}}>
-              {carrinho.map(item=>(<div key={item.produto_id} style={{display:"flex",alignItems:"center",gap:8,background:C.inputBg,borderRadius:9,padding:"9px 12px"}}>
-                <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:C.text}}>{item.nome}</div><div style={{fontSize:11,color:C.muted}}>{brl(item.preco_unit)}/un</div></div>
-                <div style={{display:"flex",alignItems:"center",gap:5}}>
-                  <button onClick={()=>updQtd(item.produto_id,Math.max(1,item.quantidade-1))} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:6,width:26,height:26,cursor:"pointer",color:C.text,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
-                  <span style={{minWidth:22,textAlign:"center",fontWeight:700,color:C.text}}>{item.quantidade}</span>
-                  <button onClick={()=>updQtd(item.produto_id,item.quantidade+1)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:6,width:26,height:26,cursor:"pointer",color:C.text,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
-                </div>
-                <div style={{minWidth:65,textAlign:"right",fontWeight:700,color:C.accent,fontSize:13}}>{brl(item.subtotal)}</div>
-                <button onClick={()=>remItem(item.produto_id)} style={{background:"none",border:"none",color:C.red,cursor:"pointer"}}><Icon d={IC.trash} size={13}/></button>
-              </div>))}
-              <div style={{display:"flex",justifyContent:"space-between",padding:"10px 12px",background:C.accentSoft,borderRadius:9}}><span style={{fontWeight:700,color:C.text}}>Total</span><span style={{fontWeight:900,color:C.accent,fontSize:17}}>{brl(totalCarrinho)}</span></div>
-            </div>
-          )}
-        </div>
-      </div>
-      <div style={{display:"flex",gap:10,marginTop:18}}><Btn C={C} onClick={criarPedido} loading={loading} full icon="check">Criar Pedido #{proximoNumero}</Btn><Btn C={C} onClick={()=>setModal(false)} variant="ghost" full>Cancelar</Btn></div>
-    </Modal>)}
-  </div>);
-};
-
-// ── CLIENTES ───────────────────────────────────────────────────────────────
-const Clientes=({clientes,pedidos,onAdd,onUpd,onDel,C})=>{
-  const [modal,setModal]=useState(false);const [editando,setEditando]=useState(null);const [detalhe,setDetalhe]=useState(null);const [busca,setBusca]=useState("");const [loading,setLoading]=useState(false);
-  const empty={nome:"",email:"",tel:"",cidade:"",obs:""};const [form,setForm]=useState(empty);const sf=(k,v)=>setForm(f=>({...f,[k]:v}));
-  const abrir=(item=null)=>{setEditando(item);setForm(item?{nome:item.nome||"",email:item.email||"",tel:item.tel||"",cidade:item.cidade||"",obs:item.obs||""}:empty);setModal(true);};
-  const salvar=async()=>{if(!form.nome)return;setLoading(true);editando?await onUpd(editando.id,form):await onAdd(form);setModal(false);setLoading(false);};
-  const filtrados=clientes.filter(c=>c.nome?.toLowerCase().includes(busca.toLowerCase()));
-  return(<div>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
-      <div><h1 style={{fontSize:24,fontWeight:800,color:C.text,margin:0}}>Clientes</h1></div>
-      <Btn C={C} onClick={()=>abrir()} icon="plus">Novo Cliente</Btn>
-    </div>
-    <div style={{marginBottom:16}}><Inp C={C} value={busca} onChange={setBusca} placeholder="🔍  Buscar..."/></div>
-    {filtrados.length===0?<Card C={C} style={{textAlign:"center",padding:60}}><p style={{color:C.dim}}>Nenhum cliente</p></Card>:(
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:14}}>
-        {filtrados.map(c=>{
-          const ps=pedidos.filter(p=>p.cliente_id===c.id);const totalGasto=ps.reduce((s,p)=>s+(p.total||0),0);
-          return(<Card C={C} key={c.id} onClick={()=>setDetalhe(c)} style={{cursor:"pointer",transition:"transform .15s,box-shadow .15s"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow=`0 8px 24px ${C.accentGlow}`;}} onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
-              <div style={{background:C.accentSoft,color:C.accent,borderRadius:10,width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:18}}>{c.nome[0].toUpperCase()}</div>
-              <div style={{display:"flex",gap:5}} onClick={e=>e.stopPropagation()}>
-                <button onClick={()=>abrir(c)} style={{background:C.inputBg,border:`1px solid ${C.border}`,borderRadius:7,padding:"5px 7px",cursor:"pointer",color:C.text}}><Icon d={IC.edit} size={13}/></button>
-                <button onClick={()=>{if(window.confirm("Excluir?"))onDel(c.id);}} style={{background:"rgba(239,68,68,.1)",border:"1px solid rgba(239,68,68,.3)",borderRadius:7,padding:"5px 7px",cursor:"pointer",color:C.red}}><Icon d={IC.trash} size={13}/></button>
-              </div>
-            </div>
-            <div style={{fontWeight:700,color:C.text,fontSize:15,marginBottom:3}}>{c.nome}</div>
-            {c.email&&<div style={{fontSize:12,color:C.muted}}>{c.email}</div>}
-            {c.tel&&<div style={{fontSize:12,color:C.muted}}>{c.tel}</div>}
-            {c.cidade&&<div style={{fontSize:12,color:C.muted}}>{c.cidade}</div>}
-            {c.obs&&<div style={{fontSize:12,color:C.yellow,marginTop:6,padding:"5px 8px",background:"rgba(245,158,11,0.08)",borderRadius:6}}>📝 {c.obs}</div>}
-            <div style={{display:"flex",gap:7,marginTop:10,flexWrap:"wrap"}}>
-              <Badge C={C} color={C.blue}>{ps.length} pedido{ps.length!==1?"s":""}</Badge>
-              <Badge C={C} color={C.green}>{brl(totalGasto)}</Badge>
-            </div>
-            <div style={{fontSize:11,color:C.accent,marginTop:8,display:"flex",alignItems:"center",gap:4}}>Ver histórico <Icon d={IC.arrowright} size={11} color={C.accent}/></div>
-          </Card>);
-        })}
-      </div>
-    )}
-    {detalhe&&(()=>{const ps=pedidos.filter(p=>p.cliente_id===detalhe.id);const total=ps.reduce((s,p)=>s+(p.total||0),0);
-      return(<Modal C={C} title={"Histórico — "+detalhe.nome} onClose={()=>setDetalhe(null)} wide>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:18}}>
-          {[["Pedidos",ps.length,C.accent],["Total gasto",brl(total),C.green],["Ticket médio",brl(ps.length>0?total/ps.length:0),C.blue]].map(([l,v,col])=>(<div key={l} style={{background:C.inputBg,borderRadius:10,padding:13,textAlign:"center"}}><div style={{fontSize:11,color:C.muted,marginBottom:4}}>{l}</div><div style={{fontSize:19,fontWeight:800,color:col}}>{v}</div></div>))}
-        </div>
-        {ps.length===0?<p style={{color:C.dim,fontSize:13,textAlign:"center"}}>Nenhum pedido</p>:(
-          <div style={{display:"flex",flexDirection:"column",gap:9}}>
-            {ps.map(p=>{const itens=JSON.parse(p.itens||"[]");return(<div key={p.id} style={{background:C.inputBg,borderRadius:11,padding:13}}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:7}}>
-                <div><span style={{fontWeight:800,color:C.accent}}>#{p.numero}</span><span style={{fontSize:12,color:C.muted,marginLeft:7}}>{p.data}</span></div>
-                <div style={{display:"flex",gap:7,alignItems:"center"}}><Badge C={C} color={STATUS_COLORS[p.status]||C.yellow}>{p.status}</Badge><span style={{fontWeight:700,color:C.accent}}>{brl(p.total)}</span></div>
-              </div>
-              <div style={{fontSize:12,color:C.muted}}>{itens.map((it,i)=><span key={i}>{it.nome} x{it.quantidade}{i<itens.length-1?", ":""}</span>)}</div>
-              <div style={{fontSize:11,color:C.dim,marginTop:3}}>💳 {p.forma_pagamento||"—"}</div>
-            </div>);})}
-          </div>
-        )}
-      </Modal>);
-    })()}
-    {modal&&(<Modal C={C} title={editando?"Editar Cliente":"Novo Cliente"} onClose={()=>setModal(false)}>
-      <div style={{display:"grid",gap:13}}>
-        <Inp C={C} label="Nome completo" value={form.nome} onChange={v=>sf("nome",v)}/>
-        <Inp C={C} label="Email" value={form.email} onChange={v=>sf("email",v)} type="email"/>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:13}}><Inp C={C} label="Telefone" value={form.tel} onChange={v=>sf("tel",v)}/><Inp C={C} label="Cidade" value={form.cidade} onChange={v=>sf("cidade",v)}/></div>
-        <Inp C={C} label="Observações" value={form.obs} onChange={v=>sf("obs",v)} placeholder="Ex: prefere Pix..."/>
-        <div style={{display:"flex",gap:10}}><Btn C={C} onClick={salvar} loading={loading} full>{editando?"Salvar":"Cadastrar"}</Btn><Btn C={C} onClick={()=>setModal(false)} variant="ghost" full>Cancelar</Btn></div>
-      </div>
-    </Modal>)}
-  </div>);
-};
-
-// ── FINANCEIRO + CONFIGS ───────────────────────────────────────────────────
-const Financeiro=({pedidos,C})=>{
-  const pagos=pedidos.filter(p=>p.status==="pago"||p.status==="entregue");
-  const receita=pagos.reduce((s,p)=>s+(p.total||0),0);
-  return(<div>
-    <h1 style={{fontSize:24,fontWeight:800,color:C.text,marginBottom:24}}>Financeiro</h1>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:16,marginBottom:22}}>
-      <StatCard C={C} label="Receita Total" value={brl(receita)} color={C.green} icon="dollar"/>
-      <StatCard C={C} label="Pedidos Pagos" value={pagos.length} color={C.blue} icon="printer"/>
-      <StatCard C={C} label="Ticket Médio" value={brl(pagos.length>0?receita/pagos.length:0)} color={C.accent} icon="chart"/>
-    </div>
-    <Card C={C}><h3 style={{margin:"0 0 16px",fontSize:15,fontWeight:700,color:C.text}}>Pedidos Finalizados</h3>
-      {pagos.length===0?<p style={{color:C.dim,fontSize:13}}>Nenhum</p>:(
-        <table style={{width:"100%",borderCollapse:"collapse"}}>
-          <thead><tr>{["#","Cliente","Data","Pagamento","Status","Total"].map(h=>(<th key={h} style={{padding:"9px 0",textAlign:"left",fontSize:11,fontWeight:700,color:C.muted,textTransform:"uppercase",borderBottom:`1px solid ${C.border}`}}>{h}</th>))}</tr></thead>
-          <tbody>{pagos.map(p=>(<tr key={p.id} style={{borderBottom:`1px solid ${C.border}`}}><td style={{padding:"11px 0",color:C.accent,fontWeight:700}}>#{p.numero}</td><td style={{padding:"11px 0",color:C.text,fontWeight:600}}>{p.cliente_nome||"—"}</td><td style={{padding:"11px 0",color:C.muted,fontSize:13}}>{p.data}</td><td style={{padding:"11px 0",color:C.muted,fontSize:13}}>{p.forma_pagamento||"—"}</td><td style={{padding:"11px 0"}}><Badge C={C} color={STATUS_COLORS[p.status]||C.green}>{p.status}</Badge></td><td style={{padding:"11px 0",color:C.accent,fontWeight:700}}>{brl(p.total)}</td></tr>))}</tbody>
-        </table>
-      )}
-    </Card>
-  </div>);
-};
-
-const Configs=({user,C})=>{
-  const [nome,setNome]=useState(user?.user_metadata?.nome||"");const [cel,setCel]=useState(user?.user_metadata?.cel||"");
-  const [loading,setLoading]=useState(false);const [msg,setMsg]=useState({text:"",ok:false});
-  const salvar=async()=>{setLoading(true);const {error}=await supabase.auth.updateUser({data:{nome,cel}});setMsg({text:error?"Erro.":"Dados salvos!",ok:!error});setLoading(false);};
-  const recuperarSenha=async()=>{const {error}=await supabase.auth.resetPasswordForEmail(user.email,{redirectTo:window.location.origin});setMsg({text:error?"Erro.":"Email enviado! Verifique sua caixa.",ok:!error});};
-  return(<div>
-    <h1 style={{fontSize:24,fontWeight:800,color:C.text,marginBottom:24}}>Configurações</h1>
-    <div style={{display:"grid",gap:14,maxWidth:500}}>
-      <Card C={C}><h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:700,color:C.accent}}>👤 Seus Dados</h3>
-        <div style={{display:"grid",gap:13}}><Inp C={C} label="Nome" value={nome} onChange={setNome}/><Inp C={C} label="Celular" value={cel} onChange={setCel}/><Inp C={C} label="Email" value={user?.email||""} readOnly/></div>
-        {msg.text&&<div style={{marginTop:11,background:msg.ok?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",color:msg.ok?C.green:C.red,padding:10,borderRadius:8,fontSize:13}}>{msg.text}</div>}
-        <div style={{marginTop:14}}><Btn C={C} onClick={salvar} loading={loading} icon="check" full>Salvar</Btn></div>
-      </Card>
-      <Card C={C}><h3 style={{margin:"0 0 11px",fontSize:14,fontWeight:700,color:C.accent}}>🔑 Segurança</h3>
-        <p style={{fontSize:13,color:C.muted,marginBottom:13}}>Receba email para redefinir sua senha.</p>
-        <Btn C={C} onClick={recuperarSenha} variant="ghost" icon="key" full>Enviar email de recuperação</Btn>
-      </Card>
-    </div>
-  </div>);
-};
-
-
 // ── FILAMENTOS ─────────────────────────────────────────────────────────────
 const Filamentos=({filamentos,onAdd,onUpd,onDel,C})=>{
   const [modal,setModal]=useState(false); const [editando,setEditando]=useState(null);
@@ -1113,7 +588,6 @@ const Insumos=({insumos,onAdd,onUpd,onDel,C})=>{
   </div>);
 };
 
-
 // ── PRECIFICAÇÃO ───────────────────────────────────────────────────────────
 const Orcamento=({filamentos,insumos,configs,onSaveConfigs,onAddCatalogo,C,setPage})=>{
   const [nome,setNome]=useState("");
@@ -1183,7 +657,6 @@ const Orcamento=({filamentos,insumos,configs,onSaveConfigs,onAddCatalogo,C,setPa
     <p style={{color:C.muted,marginBottom:24,fontSize:14}}>Calcule custos e envie direto para o catálogo</p>
     <div style={{display:"grid",gridTemplateColumns:"1fr 360px",gap:20}}>
       <div style={{display:"flex",flexDirection:"column",gap:16}}>
-
         <Card C={C}>
           <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:700,color:C.accent}}>📦 Dados do Produto</h3>
           <div style={{display:"flex",flexDirection:"column",gap:12}}>
@@ -1191,7 +664,6 @@ const Orcamento=({filamentos,insumos,configs,onSaveConfigs,onAddCatalogo,C,setPa
             <Inp C={C} label="Descrição (medidas, detalhes)" value={descricao} onChange={setDescricao} placeholder="Ex: 5x3cm, PLA, com argola..."/>
           </div>
         </Card>
-
         <Card C={C}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
             <h3 style={{margin:0,fontSize:14,fontWeight:700,color:C.accent}}>⚙️ Custos Operacionais (fixos)</h3>
@@ -1202,7 +674,6 @@ const Orcamento=({filamentos,insumos,configs,onSaveConfigs,onAddCatalogo,C,setPa
             <Inp C={C} label="Energia elétrica" value={cfgForm.energia_kwh} onChange={v=>setCfgForm(f=>({...f,energia_kwh:parseFloat(v)||0}))} type="number" prefix="R$" suffix="/kWh"/>
           </div>
         </Card>
-
         <Card C={C}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
             <h3 style={{margin:0,fontSize:14,fontWeight:700,color:C.accent}}>📊 Margens e Taxas</h3>
@@ -1217,7 +688,6 @@ const Orcamento=({filamentos,insumos,configs,onSaveConfigs,onAddCatalogo,C,setPa
             </div>
           </div>
         </Card>
-
         <Card C={C}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
             <h3 style={{margin:0,fontSize:14,fontWeight:700,color:C.accent}}>🧵 Filamentos</h3>
@@ -1231,7 +701,6 @@ const Orcamento=({filamentos,insumos,configs,onSaveConfigs,onAddCatalogo,C,setPa
             </div>
           ))}
         </Card>
-
         {insumos.length>0&&(<Card C={C}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
             <h3 style={{margin:0,fontSize:14,fontWeight:700,color:C.accent}}>✨ Insumos Adicionais</h3>
@@ -1245,7 +714,6 @@ const Orcamento=({filamentos,insumos,configs,onSaveConfigs,onAddCatalogo,C,setPa
             </div>
           ))}
         </Card>)}
-
         <Card C={C}>
           <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:700,color:C.accent}}>⏱ Tempo e Mão de Obra</h3>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
@@ -1254,7 +722,6 @@ const Orcamento=({filamentos,insumos,configs,onSaveConfigs,onAddCatalogo,C,setPa
             <Inp C={C} label="Pós-impressão" value={tempoMao} onChange={setTempoMao} type="number" suffix="min"/>
           </div>
         </Card>
-
         <Card C={C}>
           <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:700,color:C.accent}}>💡 Extras</h3>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
@@ -1262,10 +729,8 @@ const Orcamento=({filamentos,insumos,configs,onSaveConfigs,onAddCatalogo,C,setPa
             <Inp C={C} label="Urgência %" value={urgencia} onChange={setUrgencia} type="number" suffix="%"/>
           </div>
         </Card>
-
         <Btn C={C} onClick={calcular} icon="zap" full size="lg">Calcular</Btn>
       </div>
-
       <div>
         <Card C={C} style={{position:"sticky",top:20}}>
           <h3 style={{margin:"0 0 18px",fontSize:15,fontWeight:700,color:C.text}}>📊 Resultado</h3>
@@ -1312,7 +777,6 @@ const Orcamento=({filamentos,insumos,configs,onSaveConfigs,onAddCatalogo,C,setPa
   </div>);
 };
 
-
 // ── PEDIDOS ────────────────────────────────────────────────────────────────
 const Pedidos=({pedidos,clientes,catalogo,onAdd,onUpd,onDel,onUpdEstoque,C,pedidoDetalheInicial,onClearDetalhe})=>{
   const [modal,setModal]=useState(false); const [pedidoVer,setPedidoVer]=useState(pedidoDetalheInicial||null);
@@ -1351,7 +815,7 @@ const Pedidos=({pedidos,clientes,catalogo,onAdd,onUpd,onDel,onUpdEstoque,C,pedid
       <Card C={C} style={{padding:0,overflow:"hidden"}}>
         <table style={{width:"100%",borderCollapse:"collapse"}}>
           <thead><tr style={{background:C.inputBg}}>{["Nº","Cliente","Data","Total","Pagamento","Status",""].map(h=>(<th key={h} style={{padding:"12px 16px",textAlign:"left",fontSize:11,fontWeight:700,color:C.muted,textTransform:"uppercase"}}>{h}</th>))}</tr></thead>
-          <tbody>{filtrados.map((p,i)=>{
+          <tbody>{filtrados.map((p)=>{
             const sc=STATUS_COLORS[p.status]||C.accent;
             return(<tr key={p.id} style={{borderTop:`1px solid ${C.border}`,cursor:"pointer"}} onClick={()=>setPedidoVer(p)} onMouseEnter={e=>e.currentTarget.style.background=C.inputBg} onMouseLeave={e=>e.currentTarget.style.background=""}>
               <td style={{padding:"14px 16px",color:C.accent,fontWeight:800}}>#{p.numero}</td>
@@ -1535,7 +999,6 @@ const Configs=({user,C})=>{
     </div>
   </div>);
 };
-
 
 // ── MAIN APP ───────────────────────────────────────────────────────────────
 export default function App(){
