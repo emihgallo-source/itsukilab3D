@@ -701,19 +701,29 @@ const Orcamento=({filamentos,insumos,configs,onSaveConfigs,onAddCatalogo,C,setPa
             </div>
           ))}
         </Card>
-        {insumos.length>0&&(<Card C={C}>
+        <Card C={C}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
             <h3 style={{margin:0,fontSize:14,fontWeight:700,color:C.accent}}>✨ Insumos Adicionais</h3>
-            <button onClick={()=>setInsUsados(f=>[...f,{insumo_id:"",quantidade:""}])} style={{background:C.accent,color:"#fff",border:"none",borderRadius:8,padding:"4px 12px",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600}}>+ Insumo</button>
+            {insumos.length>0&&<button onClick={()=>setInsUsados(f=>[...f,{insumo_id:"",quantidade:""}])} style={{background:C.accent,color:"#fff",border:"none",borderRadius:8,padding:"4px 12px",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600}}>+ Insumo</button>}
           </div>
-          {insUsados.map((iu,i)=>(
-            <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 120px 32px",gap:8,marginBottom:8,alignItems:"end"}}>
-              <Sel C={C} label={i===0?"Insumo":""} value={iu.insumo_id} onChange={v=>{const a=[...insUsados];a[i]={...a[i],insumo_id:v};setInsUsados(a);}} options={[{value:"",label:"— Selecionar —"},...insumos.map(ins=>({value:ins.id,label:`${ins.nome} (${brl(ins.qtd_total>0?ins.valor_pago/ins.qtd_total:0)}/un)`}))]}/>
-              <Inp C={C} label={i===0?"Qtd":""} value={iu.quantidade} onChange={v=>{const a=[...insUsados];a[i]={...a[i],quantidade:v};setInsUsados(a);}} type="number" suffix="un"/>
-              <button onClick={()=>setInsUsados(f=>f.filter((_,j)=>j!==i))} style={{background:"rgba(239,68,68,.1)",border:"1px solid rgba(239,68,68,.3)",borderRadius:8,height:38,cursor:"pointer",color:C.red}}>✕</button>
+          {insumos.length===0?(
+            <div style={{textAlign:"center",padding:"16px 0",color:C.dim,fontSize:13}}>
+              Nenhum insumo cadastrado ainda.{" "}
+              <button onClick={()=>setPage("insumos")} style={{background:"none",border:"none",color:C.accent,cursor:"pointer",fontSize:13,fontFamily:"inherit",fontWeight:600}}>Cadastrar insumos →</button>
             </div>
-          ))}
-        </Card>)}
+          ):(
+            <>
+              {insUsados.length===0&&<div style={{fontSize:12,color:C.dim,marginBottom:8}}>Clique em "+ Insumo" para adicionar argolas, imãs, correntes...</div>}
+              {insUsados.map((iu,i)=>(
+                <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 120px 32px",gap:8,marginBottom:8,alignItems:"end"}}>
+                  <Sel C={C} label={i===0?"Insumo":""} value={iu.insumo_id} onChange={v=>{const a=[...insUsados];a[i]={...a[i],insumo_id:v};setInsUsados(a);}} options={[{value:"",label:"— Selecionar —"},...insumos.map(ins=>({value:ins.id,label:`${ins.nome} (${brl(ins.qtd_total>0?ins.valor_pago/ins.qtd_total:0)}/un)`}))]}/>
+                  <Inp C={C} label={i===0?"Qtd":""} value={iu.quantidade} onChange={v=>{const a=[...insUsados];a[i]={...a[i],quantidade:v};setInsUsados(a);}} type="number" suffix="un"/>
+                  <button onClick={()=>setInsUsados(f=>f.filter((_,j)=>j!==i))} style={{background:"rgba(239,68,68,.1)",border:"1px solid rgba(239,68,68,.3)",borderRadius:8,height:38,cursor:"pointer",color:C.red}}>✕</button>
+                </div>
+              ))}
+            </>
+          )}
+        </Card>
         <Card C={C}>
           <h3 style={{margin:"0 0 16px",fontSize:14,fontWeight:700,color:C.accent}}>⏱ Tempo e Mão de Obra</h3>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
